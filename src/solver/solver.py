@@ -18,7 +18,7 @@ def distance(x1, x2):
 
 
 class Solver:
-    def __init__(self, f, x0, f_deriv=None, x_eps=1e-8, y_eps=1e-8, max_iter=100, debug=True):
+    def __init__(self, f, x0, f_deriv=None, x_eps=1e-8, y_eps=1e-8, max_iter=1000, debug=False):
         """
         :param f: set of functions - m functions on n variables
         :param x0: starting point for finding roots. Point has n coordinates
@@ -27,7 +27,7 @@ class Solver:
         two consecutive iterates is at most x_eps
         :param y_eps: stop if ||f(x)|| < y_eps
         :param max_iter: Max number of iterations
-        :param degub: if debug is True, then print point after each iteration
+        :param debug: if debug is True, then print current approximation after each iteration
         """
         self.f = f
         self.f_deriv = f_deriv
@@ -40,7 +40,7 @@ class Solver:
 
     def newton(self):
         """
-        Caclulate root of equations using newton's method, if Jacobian exists and invertable
+        Caclulate root of equations using newton's method
         :return: root of equations
         """
         if self.f_deriv is None:
@@ -57,10 +57,9 @@ class Solver:
             cur_y = np.zeros(1)
 
             # if matrix is non invertable then take pseudo - inverse
-            if np.linalg.det(J) == 0:
+            if J.shape[0] != J.shape[1] or np.linalg.det(J) == 0:
                 tmp = np.linalg.pinv(J)
                 cur_y = tmp @ -F
-                # raise RuntimeError('Determinant equals zero')
             else:
                 cur_y = np.linalg.solve(J, -F)
 
@@ -84,10 +83,9 @@ class Solver:
         J = np.array(self.f_deriv(list(cur_x.ravel())))
         A_cur = np.zeros(1)
 
-        # if matrix is non invertable than take pseudo - inverse
-        if np.linalg.det(J) == 0:
+        # if matrix is non invertable then take pseudo - inverse
+        if J.shape[0] != J.shape[1] or np.linalg.det(J) == 0:
             A_cur = np.linalg.pinv(J)
-            # raise RuntimeError('Determinant equals zero')
         else:
             A_cur = np.linalg.inv(J)
 
@@ -194,7 +192,6 @@ class IntervalSolver:
             for i in range(self.n):
                 current_interval[i] &= next_interval[i]
 
-
             int_dist = 0
             for i in range(self.n):
                 l1 = current_interval[i][0].inf
@@ -204,15 +201,6 @@ class IntervalSolver:
                 d = r2 - l2 - (r1 - l1)
                 int_dist = max(d, int_dist)
             int_dist **= 0.5
-
-            tmptmp = self.f(current_interval)
-
-            for i in range(self.n):
-                if 0 in tmptmp[i]:
-                    pass
-                else:
-                    print(f'Error on {it} op')
-                    break
 
             if int_dist < self.gap:
                 pos_change = 0
@@ -224,23 +212,18 @@ class IntervalSolver:
                         best_w = r - l
                         pos_change = i
 
-                # print(it, pos_change)
                 interv = current_interval[pos_change][0]
                 l = interv.inf
                 r = interv.sup
                 current_interval[pos_change] = interval([l, (l + r) / 2])
                 t = self.f(current_interval)
-                current_interval[pos_change] = interval([(l+r)/2, r])
-                s = self.f(current_interval)
-                current_interval[pos_change] = interval([l, r])
-                g = self.f(current_interval)
-                current_interval[pos_change] = interval([l, (l + r) / 2])
+                current_interval[pos_change] = interval([(l + r) / 2, r])
 
                 for i in range(self.n):
                     if 0 in t[i]:
                         pass
                     else:
-                        current_interval[pos_change] = interval([(l+r)/2, r])
+                        current_interval[pos_change] = interval([(l + r) / 2, r])
                         break
 
                 continue
